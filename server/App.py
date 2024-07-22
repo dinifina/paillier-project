@@ -27,9 +27,16 @@ class Server:
             data = conn.recv(1024)
             if data:
                 # Server receives encrypted result and computes on encrypted results
-                print (data.decode('utf-8'))
-            # Server sends client both keys
-            conn.sendall(str(self.__public_key).encode('utf-8')) #can you export the key and send the key itself?
+                match data:
+                    case b"User":
+                        print(data)
+                        conn.sendall(str("Paillier public key integer n: "+ str(self.__public_key.n)).encode('utf-8')) #sending public key modulus n, so that user can regenerate pk
+                    case b"Client":
+                        print("")
+                        #check if the client is actually the client
+                    case _:
+                        print("Invalid")
+                        #Invalid and close the connection
             #conn.close(), with conn (it automatically closes connection)
             
     def deserialise_data(serialised_data):
