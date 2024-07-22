@@ -4,26 +4,27 @@ from phe import paillier
 
 class Server:
 # Server creates private and public key for client
-    __public_key, __private_key = paillier.generate_paillier_keypair() # wait this doesn't make sense why are we the ones creating the keys
-
+    def __init__(self):
+        self.__public_key, self.__private_key = paillier.generate_paillier_keypair() # wait this doesn't make sense why are we the ones creating the keys
+    
 # Server awaits on TCP connection with client
     def app(self):
-        host = socket.gethostname()
-        port = 5000
+        HOST = "127.0.0.1"  #localhost
+        PORT = 5000
 
         server_socket = socket.socket()
-        server_socket.bind((host, port))
+        server_socket.bind((HOST, PORT))
         
-        server_socket.listen(1)
+        server_socket.listen(5)
         conn, address = server_socket.accept()
-
         print(f"Connection with client {address} established")
-        # Server sends client both keys
         client_keys = (self.__public_key, self.__private_key)
-        conn.send(client_keys)
-        # Server receives encrypted result and computes on encrypted results
-        data = conn.recv(1024).decode()
-        
+        data = conn.recv(1024)
+        if data:
+            # Server receives encrypted result and computes on encrypted results
+            print (data.decode('utf-8'))
+        # Server sends client both keys
+        conn.sendall(str(self.__public_key).encode('utf-8'))
         conn.close()
             
     def deserialise_data(serialised_data):
@@ -52,5 +53,5 @@ class Server:
         encrypted_avg = paillier.powmod(encrypted_sum, inverse_n, n_squared)
         return encrypted_avg
         
-    if __name__ == '__main__':
-        app()
+if __name__ == '__main__':
+    Server().app()
