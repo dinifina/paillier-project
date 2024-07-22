@@ -1,6 +1,10 @@
 import socket
 import json
-from phe import paillier
+import sys
+sys.path.append("library")
+sys.path.append("server/library")
+from library.phe import paillier
+from library import rsa
 
 class Server:
 # Server creates private and public key for client
@@ -17,15 +21,16 @@ class Server:
         
         server_socket.listen(5)
         conn, address = server_socket.accept()
-        print(f"Connection with client {address} established")
-        client_keys = (self.__public_key, self.__private_key)
-        data = conn.recv(1024)
-        if data:
-            # Server receives encrypted result and computes on encrypted results
-            print (data.decode('utf-8'))
-        # Server sends client both keys
-        conn.sendall(str(self.__public_key).encode('utf-8'))
-        conn.close()
+        with conn:
+            print(f"Connection with client {address} established")
+            client_keys = (self.__public_key, self.__private_key)
+            data = conn.recv(1024)
+            if data:
+                # Server receives encrypted result and computes on encrypted results
+                print (data.decode('utf-8'))
+            # Server sends client both keys
+            conn.sendall(str(self.__public_key).encode('utf-8')) #can you export the key and send the key itself?
+            #conn.close(), with conn (it automatically closes connection)
             
     def deserialise_data(serialised_data):
         # data is sent serialised
