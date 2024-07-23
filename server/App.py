@@ -9,36 +9,65 @@ from library import rsa
 class Server:
 # Server creates private and public key for client
     def __init__(self):
-        self.__public_key, self.__private_key = paillier.generate_paillier_keypair() # wait this doesn't make sense why are we the ones creating the keys
-    
+        self.__public_key, self.__private_key = paillier.generate_paillier_keypair() #TEMPORARY
+        
 # Server awaits on TCP connection with client
     def app(self):
+        def signature_check(part1, part2, rsaPubkey):
+            crypto = rsa.decrypt(part1, rsaPubkey)
+            if crypto == part2:
+                return True
+            else:
+                return False
+            
+        def case_User(pkey):
+            #Get public RSA_key
+            conn.sendall(b'RSA_Key')
+            data = conn.recv(1024)
+            rsaPubkey = rsa.PublicKey._load_pkcs1_pem(data)
+            #Send Paillier public key
+            conn.sendall(str(pkey).encode('utf-8')) #sending public key modulus n, so that user can regenerate pk
+            #Receive encrypted data & Signature Check
+            part1 = conn.recv(1024)
+            tamperCheck = False
+            if part1:
+                part2 = conn.recv(1024)
+                if part2 != part1:
+                    tamperCheck = signature_check(part1, part2, rsaPubkey)
+            #Check integrity & Store Data
+            if tamperCheck:
+                with open("encrypted_database.json", "r+") as f:
+                    existingData = f.read()
+                    f.seek(0)
+                    #### TO DO #### ----ARDINI
+                    #read data, and replace with new
+                conn.sendall("Complete")
+            else:
+                conn.sendall("Incomplete: Tampered Message")
+
         HOST = "127.0.0.1"  #localhost
         PORT = 5000
-
         server_socket = socket.socket()
         server_socket.bind((HOST, PORT))
-        
         server_socket.listen(5)
         conn, address = server_socket.accept()
+        
         with conn:
             print(f"Connection with client {address} established")
-            client_keys = (self.__public_key, self.__private_key)
             data = conn.recv(1024)
             if data:
-                # Server receives encrypted result and computes on encrypted results
                 match data:
                     case b"User":
-                        print(data)
-                        conn.sendall(str("Paillier public key integer n: "+ str(self.__public_key.n)).encode('utf-8')) #sending public key modulus n, so that user can regenerate pk
+                        case_User(self.__public_key.n)
                     case b"Client":
                         print("")
                         #check if the client is actually the client
                     case _:
                         print("Invalid")
+                        conn.sendall(b'Invalid Request: Please send "User" or "Client"')
                         #Invalid and close the connection
-            #conn.close(), with conn (it automatically closes connection)
-            
+                        
+               
     def deserialise_data(serialised_data):
         # data is sent serialised
         data_dict = json.loads(serialised_data)
