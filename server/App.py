@@ -41,7 +41,7 @@ class Server:
                 #     existingData = f.read()
                 #     f.seek(0)
                 #     #### TO DO #### ----ARDINI
-                #     #read data, and replace with new
+                #     #do what you need to do for the database of enc_salaries
                 conn.sendall(b"Complete")
             else:
                 conn.sendall(b"Incomplete: Tampered Message")
