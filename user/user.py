@@ -15,8 +15,14 @@ class user:
     
     def app(self):
         def send_sigMsg(rsaSign, encryptedSal):
+            print("Sending your encrypted salary")
             s.sendall(rsaSign)
             s.sendall(encryptedSal)
+        
+        def RSA_encryption(msg):
+            skey = self.privkey
+            result = rsa.sign(msg, skey, 'SHA-256')
+            return result
             
         def serverResponse(data):
             match data:
@@ -29,7 +35,7 @@ class user:
                         #Encrypt salary
                         encryptedSal = str(paillierPubk.encrypt(self.salary).ciphertext()).encode('utf-8')
                         #Encrypted msg with private key
-                        rsaSign = rsa.encrypt(encryptedSal, self.privkey)
+                        rsaSign = RSA_encryption(encryptedSal)
                         return rsaSign, encryptedSal
                     else:
                         return None, None
@@ -49,16 +55,16 @@ class user:
             print("Connected to Server")
             s.sendall(message)
             #Server response
-            data = s.recv(1024)
+            data = s.recv(2048)
             if data:
                 rsaSign, encryptedSal = serverResponse(data)
                 if (rsaSign != None and encryptedSal != None):
                     send_sigMsg(rsaSign, encryptedSal)
-                    data = s.recv(1024).decode('utf-8')
+                    data = s.recv(2048).decode('utf-8')
                     if data:
                         match data:
                             case 'Complete':
-                                print("Your Salary has been uploaded securely")
+                                print("Your salary has been uploaded securely")
                             case _:
                                 print(data)
             else:

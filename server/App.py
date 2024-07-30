@@ -13,9 +13,10 @@ class Server:
         
 # Server awaits on TCP connection with client
     def app(self):
-        def signature_check(part1, part2, rsaPubkey):
-            crypto = rsa.decrypt(part1, rsaPubkey)
-            if crypto == part2:
+        def signature_check(sig, eSal, rsaPubkey):
+            print("Verifying signature")
+            crypto = rsa.verify(eSal, sig, rsaPubkey)
+            if crypto == 'SHA-256':
                 return True
             else:
                 return False
@@ -23,27 +24,27 @@ class Server:
         def case_User(pkey):
             #Get public RSA_key
             conn.sendall(b'RSA_Key')
-            data = conn.recv(1024)
+            data = conn.recv(2048)
             rsaPubkey = rsa.PublicKey._load_pkcs1_pem(data)
             #Send Paillier public key
             conn.sendall(str(pkey).encode('utf-8')) #sending public key modulus n, so that user can regenerate pk
             #Receive encrypted data & Signature Check
-            part1 = conn.recv(1024)
+            sig = conn.recv(2048)
             tamperCheck = False
-            if part1:
-                part2 = conn.recv(1024)
-                if part2 != part1:
-                    tamperCheck = signature_check(part1, part2, rsaPubkey)
+            if sig:
+                eSal = conn.recv(2048)
+                tamperCheck = signature_check(sig, eSal, rsaPubkey)
             #Check integrity & Store Data
             if tamperCheck:
-                with open("encrypted_database.json", "r+") as f:
-                    existingData = f.read()
-                    f.seek(0)
-                    #### TO DO #### ----ARDINI
-                    #read data, and replace with new
-                conn.sendall("Complete")
+                print("Passed tamper check")
+                # with open("encrypted_database.json", "r+") as f:
+                #     existingData = f.read()
+                #     f.seek(0)
+                #     #### TO DO #### ----ARDINI
+                #     #read data, and replace with new
+                conn.sendall(b"Complete")
             else:
-                conn.sendall("Incomplete: Tampered Message")
+                conn.sendall(b"Incomplete: Tampered Message")
 
         HOST = "127.0.0.1"  #localhost
         PORT = 5000
@@ -54,7 +55,7 @@ class Server:
         
         with conn:
             print(f"Connection with client {address} established")
-            data = conn.recv(1024)
+            data = conn.recv(2048)
             if data:
                 match data:
                     case b"User":
