@@ -38,6 +38,7 @@ class Server:
             tamperCheck = False
             if sig:
                 eSal = conn.recv(2048)
+                print(f"Authentication in progress")
                 tamperCheck = signature_check(eSal, sig, rsaPubkey)
             #Check integrity & Store Data
             if tamperCheck:
