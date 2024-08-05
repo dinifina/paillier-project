@@ -72,8 +72,8 @@ class Server:
                 # with open("encrypted_database.json", "r+") as f:
                 #     existingData = f.read()
                 #     f.seek(0)
-                #     #### TO DO #### ----ARDINI
-                #     #do what you need to do for the database of enc_salaries
+                    # ### TO DO #### ----ARDINI
+                    # do what you need to do for the database of enc_salaries
                 enc_salaries = 10000
                 conn.sendall(str(enc_salaries).encode('utf-8'))
                 print("Sent details to Client")
@@ -82,6 +82,7 @@ class Server:
                 conn.sendall(b"Answer is incorrect")
         
         server_socket = socket.socket()
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind((self.HOST, self.PORT))
         server_socket.listen(5)
         conn, address = server_socket.accept()
