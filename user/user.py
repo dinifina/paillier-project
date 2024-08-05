@@ -1,5 +1,6 @@
 import socket
 import sys
+import json
 sys.path.append("library")
 sys.path.append("user/library")
 from library import rsa
@@ -11,7 +12,7 @@ class user:
         ############### BOTH CLIENT & USER HAS ACCESS TO THESE
         self.HOST = "127.0.0.1"  # The server's hostname or IP address
         self.PORT = 5001  # The port used by the server
-        self.salary = 10000
+        self.salaries = [10000, 220501, 90500]
         ############### ONLY USER HAS ACCESS TO THIS
         (self.pubkey, self.privkey) = rsa.newkeys(2048)
         ############### ONLY CLIENT HAS ACCESS TO THIS (KEY GENERATED FROM PHE.PAILLIER)
@@ -21,6 +22,7 @@ class user:
         ############### Paillier keys
         self.paillier_pubk = paillier.PaillierPublicKey(self.paillier_pubkn)
         self.paillier_privk = paillier.PaillierPrivateKey(self.paillier_pubk,self.paillier_privp, self.paillier_privq)
+        self.public_g = self.paillier_pubk.g
         
     def app(self):
         def send_sigMsg(rsaSign, encryptedSal):
@@ -33,6 +35,17 @@ class user:
             result = rsa.sign(msg, skey, 'SHA-256')
             return result
             
+        def encrypt_salaries(data, modulus):
+            enc_data = {} 
+            paillierPubk = paillier.PaillierPublicKey(int(modulus))
+            encrypted_salaries = [paillierPubk.encrypt(x) for x in data]
+            enc_data['public_key'] = {'g': paillierPubk.g, 'n': paillierPubk.n}
+            enc_data['values'] = [
+                (str(x.ciphertext()), x.exponent) for x in encrypted_salaries
+            ]
+            serialised = json.dumps(enc_data).encode('utf-8')
+            return serialised
+
         def serverResponse_user(data):
             match data:
                 case b'RSA_Key':
@@ -40,11 +53,13 @@ class user:
                     #Get Paillier pubkey Modulus
                     data = s.recv(2048).decode('utf-8')
                     if data:
-                        paillierPubk = paillier.PaillierPublicKey(int(data))
-                        #Encrypt salary
-                        encryptedSal = str(paillierPubk.encrypt(self.salary).ciphertext()).encode('utf-8')
-                        #Encrypted msg with private key
-                        rsaSign = RSA_sign(encryptedSal)
+                        # paillierPubk = paillier.PaillierPublicKey(int(data))
+                        #Serialise list of salaries and send to server
+                        encryptedSal = encrypt_salaries(self.salaries, data)
+                        # encryptedSal = str(paillierPubk.encrypt(self.salaries).ciphertext()).encode('utf-8')
+                        # Encrypted msg with private key
+                        public_g = str(self.public_g).encode('utf-8')
+                        rsaSign = RSA_sign(public_g)
                         return rsaSign, encryptedSal
                     else:
                         return None, None
@@ -102,7 +117,7 @@ class user:
                 if data:
                     rsaSign, encryptedSal = serverResponse_user(data)
                     if (rsaSign != None and encryptedSal != None):
-                        send_sigMsg(rsaSign, encryptedSal)
+                        send_sigMsg(rsaSign, str(self.public_g).encode('utf-8'))
                         data = s.recv(2048).decode('utf-8')
                         if data:
                             match data:

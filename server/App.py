@@ -17,7 +17,7 @@ class Server:
         
 # Server awaits on TCP connection with client
     def app(self):
-        def signature_check(sig, eSal, rsaPubkey):
+        def signature_check(eSal, sig, rsaPubkey):
             print("Verifying signature")
             crypto = rsa.verify(eSal, sig, rsaPubkey)
             if crypto == 'SHA-256':
@@ -34,10 +34,11 @@ class Server:
             conn.sendall(str(self.paillier_pubkn).encode('utf-8')) #sending public key modulus n, so that user can regenerate pk
             #Receive encrypted data & Signature Check
             sig = conn.recv(2048)
+            print(f"Signature received")
             tamperCheck = False
             if sig:
                 eSal = conn.recv(2048)
-                tamperCheck = signature_check(sig, eSal, rsaPubkey)
+                tamperCheck = signature_check(eSal, sig, rsaPubkey)
             #Check integrity & Store Data
             if tamperCheck:
                 print("Passed tamper check")
@@ -99,8 +100,7 @@ class Server:
                         print("Invalid")
                         conn.sendall(b'Invalid Request: Please send "User" or "Client"')
                         #Invalid and close the connection
-                        
-               
+
     def deserialise_data(serialised_data):
         # data is sent serialised
         data_dict = json.loads(serialised_data)
@@ -111,7 +111,7 @@ class Server:
             for x in data_dict['values']
         ]
         return encrypted_data
-    
+
     def compute_average(encrypted_data):
         encrypted_vals = [x[0] for x in encrypted_data]
         encrypted_sum = 0
@@ -121,10 +121,7 @@ class Server:
             num_vals += 1
             
         # holy fuck there isn't a division function in this library
-        pk = [k[0] for k in encrypted_data]
-        n_squared = pk[0] * pk[0]
-        inverse_n = paillier.invert(num_vals)
-        encrypted_avg = paillier.powmod(encrypted_sum, inverse_n, n_squared)
+        encrypted_avg = encrypted_sum/num_vals
         return encrypted_avg
         
 if __name__ == '__main__':
