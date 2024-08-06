@@ -6,6 +6,7 @@ sys.path.append("library")
 sys.path.append("server/library")
 from library.phe import paillier
 from library import rsa
+from library.phe.util import invert
 
 class Server:
 # Server creates private and public key for client
@@ -24,6 +25,16 @@ class Server:
                 return True
             else:
                 return False
+            
+        def compute_average(data):
+            values = [paillier.EncryptedNumber(self.paillier_pubk, x) for x in data['salaries']]
+            encrypted_sum = 0
+            for x in values:
+                encrypted_sum = encrypted_sum + x
+            num_values = data['num']
+            div_inverse = invert(num_values, self.paillier_pubkn)
+            encrypted_avg = encrypted_sum * div_inverse
+            return encrypted_avg
 
         def case_User():
             #Get public RSA_key
@@ -82,8 +93,9 @@ class Server:
                 with open("encrypted_database.json", "r+") as f:
                     # read encrypted number
                     file_content = f.read()
-                    data = json.loads(file_content).get("average")
-                conn.sendall(str(data).encode('utf-8'))
+                    data = json.loads(file_content)
+                    average = str(compute_average(data).ciphertext()).encode('utf-8')
+                conn.sendall(average)
                 print("Sent details to Client")
             else:
                 print("Client answer is incorrect")
