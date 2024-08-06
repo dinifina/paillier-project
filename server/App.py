@@ -17,37 +17,45 @@ class Server:
         
 # Server awaits on TCP connection with client
     def app(self):
-        def signature_check(eSal, sig, rsaPubkey):
+        def signature_check(message, sig, rsaPubkey):
             print("Verifying signature")
-            crypto = rsa.verify(eSal, sig, rsaPubkey)
+            crypto = rsa.verify(message, sig, rsaPubkey)
             if crypto == 'SHA-256':
                 return True
             else:
                 return False
-            
+
         def case_User():
             #Get public RSA_key
             conn.sendall(b'RSA_Key')
             data = conn.recv(2048)
             rsaPubkey = rsa.PublicKey._load_pkcs1_pem(data)
-            #Send Paillier public key
+            #Send Paillier public key modulus
             conn.sendall(str(self.paillier_pubkn).encode('utf-8')) #sending public key modulus n, so that user can regenerate pk
             #Receive encrypted data & Signature Check
             sig = conn.recv(2048)
             print(f"Signature received")
             tamperCheck = False
             if sig:
-                eSal = conn.recv(2048)
+                message = conn.recv(2048)
                 print(f"Authentication in progress")
-                tamperCheck = signature_check(eSal, sig, rsaPubkey)
+                tamperCheck = signature_check(message, sig, rsaPubkey)
             #Check integrity & Store Data
             if tamperCheck:
                 print("Passed tamper check")
-                # with open("encrypted_database.json", "r+") as f:
-                #     existingData = f.read()
-                #     f.seek(0)
-                #     #### TO DO #### ----ARDINI
-                #     #do what you need to do for the database of enc_salaries
+                with open("encrypted_database.json", "r+") as f:
+                    jsonData = f.read()
+                    f.seek(0)
+                    # save encrypted val to db
+                    data = json.loads(jsonData)
+                    encryptedSal = int(message.decode('utf-8'))
+                    salaryKey = 'salaries'
+                    numPeopleKey = 'num'
+                    if salaryKey and numPeopleKey in data:
+                        data[salaryKey].append(encryptedSal)
+                        data[numPeopleKey] += 1
+                    json.dump(data, f)
+                    print("Successfully computed")
                 conn.sendall(b"Complete")
             else:
                 conn.sendall(b"Incomplete: Tampered Message")
@@ -71,13 +79,11 @@ class Server:
             #response
             clientAns = conn.recv(2048).decode('utf-8')
             if (int(clientAns) == ans_enc.ciphertext(be_secure=False)):
-                # with open("encrypted_database.json", "r+") as f:
-                #     existingData = f.read()
-                #     f.seek(0)
-                    # ### TO DO #### ----ARDINI
-                    # do what you need to do for the database of enc_salaries
-                enc_salaries = 10000
-                conn.sendall(str(enc_salaries).encode('utf-8'))
+                with open("encrypted_database.json", "r+") as f:
+                    # read encrypted number
+                    file_content = f.read()
+                    data = json.loads(file_content).get("average")
+                conn.sendall(str(data).encode('utf-8'))
                 print("Sent details to Client")
             else:
                 print("Client answer is incorrect")
@@ -102,28 +108,6 @@ class Server:
                         conn.sendall(b'Invalid Request: Please send "User" or "Client"')
                         #Invalid and close the connection
 
-    def deserialise_data(serialised_data):
-        # data is sent serialised
-        data_dict = json.loads(serialised_data)
-        pk = data_dict['public_key']
-        public_key = paillier.PaillierPublicKey(g = int(pk['g']), n = int(pk['n']))
-        encrypted_data = [
-            paillier.EncryptedNumber(public_key, int(x[0]), int(x[1]))
-            for x in data_dict['values']
-        ]
-        return encrypted_data
-
-    def compute_average(encrypted_data):
-        encrypted_vals = [x[0] for x in encrypted_data]
-        encrypted_sum = 0
-        num_vals = 0
-        for x in encrypted_vals:
-            encrypted_sum = encrypted_sum + x
-            num_vals += 1
-            
-        # holy fuck there isn't a division function in this library
-        encrypted_avg = encrypted_sum/num_vals
-        return encrypted_avg
         
 if __name__ == '__main__':
     Server().app()

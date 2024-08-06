@@ -12,9 +12,9 @@ class user:
         ############### BOTH CLIENT & USER HAS ACCESS TO THESE
         self.HOST = "127.0.0.1"  # The server's hostname or IP address
         self.PORT = 5001  # The port used by the server
-        self.salaries = [10000, 220501, 90500]
+        self.salary = 22051
         ############### ONLY USER HAS ACCESS TO THIS
-        (self.pubkey, self.privkey) = rsa.newkeys(2048)
+        (self.pubkey, self.privkey) = rsa.newkeys(2047)
         ############### ONLY CLIENT HAS ACCESS TO THIS (KEY GENERATED FROM PHE.PAILLIER)
         self.paillier_privp = 2291292959459873742182383900054479391339700075384482340707171597222637753428982942135876616674834980588956082914497983323609878055163913673083122014066981864854387257287366450869841777395703056864869916769392211298707889663660821824217424226969315077124558206593513725965392398588623991580206534578545358867501948813058379147845661872322134245769526192727427523249551211627263771242588677795763761064959606188877489985097399439441995501723152754101529672052876749
         self.paillier_privq = 2400014461385911788918503599704110282044406274459797245917989349468276415689997733503592043325745636623418256635614566120119952917822250676012612171375454338574831876060764665075250733280368089240160444323280177594304415506597977681769227587578451397160601317154226273302655586540225313998942177689678449257293801038700828359986151157739904272740583626898333810052151020550143223563935819013949241180528087184915193853237170566101070478538812000228092104563279179
@@ -25,26 +25,17 @@ class user:
         self.public_g = self.paillier_pubk.g
         
     def app(self):
-        def send_sigMsg(rsaSign, encryptedSal):
-            print("Sending your encrypted salary")
+        def send_sigMsg(rsaSign, sal):
+            print("Sending your signature")
             s.sendall(rsaSign)
-            s.sendall(encryptedSal)
+            print(f"Signature Sent")
+            print(f"Sending encrypted salary")
+            s.sendall(sal)
         
         def RSA_sign(msg):
             skey = self.privkey
             result = rsa.sign(msg, skey, 'SHA-256')
             return result
-            
-        def encrypt_salaries(data, modulus):
-            enc_data = {} 
-            paillierPubk = paillier.PaillierPublicKey(int(modulus))
-            encrypted_salaries = [paillierPubk.encrypt(x) for x in data]
-            enc_data['public_key'] = {'g': paillierPubk.g, 'n': paillierPubk.n}
-            enc_data['values'] = [
-                (str(x.ciphertext()), x.exponent) for x in encrypted_salaries
-            ]
-            serialised = json.dumps(enc_data).encode('utf-8')
-            return serialised
 
         def serverResponse_user(data):
             match data:
@@ -53,13 +44,9 @@ class user:
                     #Get Paillier pubkey Modulus
                     data = s.recv(2048).decode('utf-8')
                     if data:
-                        # paillierPubk = paillier.PaillierPublicKey(int(data))
-                        #Serialise list of salaries and send to server
-                        encryptedSal = encrypt_salaries(self.salaries, data)
-                        # encryptedSal = str(paillierPubk.encrypt(self.salaries).ciphertext()).encode('utf-8')
                         # Encrypted msg with private key
-                        public_g = str(self.public_g).encode('utf-8')
-                        rsaSign = RSA_sign(public_g)
+                        encryptedSal = str(self.paillier_pubk.encrypt(self.salary).ciphertext()).encode('utf-8')
+                        rsaSign = RSA_sign(encryptedSal)
                         return rsaSign, encryptedSal
                     else:
                         return None, None
@@ -79,7 +66,8 @@ class user:
             s.sendall(ans_enc)
             response = s.recv(2024).decode("utf-8")
             #decode response
-            print(response)
+            avg = self.paillier_privk.raw_decrypt(int(response))
+            print(f"Average: {avg}")
             
         
         def getUserType():       
@@ -112,12 +100,15 @@ class user:
             print("Connected to Server")
             #Server response
             if message == b'User':
+                # Sends 'user'
                 s.sendall(message)
+                # Receive 
                 data = s.recv(2048)
                 if data:
                     rsaSign, encryptedSal = serverResponse_user(data)
                     if (rsaSign != None and encryptedSal != None):
-                        send_sigMsg(rsaSign, str(self.public_g).encode('utf-8'))
+                        send_sigMsg(rsaSign, encryptedSal)
+                        s.sendall(encryptedSal)
                         data = s.recv(2048).decode('utf-8')
                         if data:
                             match data:
