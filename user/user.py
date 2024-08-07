@@ -45,7 +45,7 @@ class user:
                     data = s.recv(2048).decode('utf-8')
                     if data:
                         # Encrypted msg with private key
-                        encryptedSal = str(self.paillier_pubk.encrypt(self.salary).ciphertext(be_secure=False)).encode('utf-8')
+                        encryptedSal = str(self.paillier_pubk.encrypt(self.salary).ciphertext()).encode('utf-8')
                         rsaSign = RSA_sign(encryptedSal)
                         return rsaSign, encryptedSal
                     else:
