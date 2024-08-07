@@ -12,7 +12,7 @@ class user:
         ############### BOTH CLIENT & USER HAS ACCESS TO THESE
         self.HOST = "127.0.0.1"  # The server's hostname or IP address
         self.PORT = 5001  # The port used by the server
-        self.salary = 22051
+        self.salary = 44024
         ############### ONLY USER HAS ACCESS TO THIS
         (self.pubkey, self.privkey) = rsa.newkeys(2047)
         ############### ONLY CLIENT HAS ACCESS TO THIS (KEY GENERATED FROM PHE.PAILLIER)
@@ -64,9 +64,10 @@ class user:
             ans = upper_dec-lower_dec
             ans_enc = str(self.paillier_pubk.encrypt(ans, r_value=rval).ciphertext(be_secure=False)).encode('utf-8')
             s.sendall(ans_enc)
-            response = s.recv(2024).decode("utf-8")
+            rec_cipher = s.recv(2024).decode("utf-8")
+            rec_expo = s.recv(2024).decode("utf-8")
             #decode response
-            enc_num = paillier.EncryptedNumber(self.paillier_pubk, int(response))
+            enc_num = paillier.EncryptedNumber(self.paillier_pubk, int(rec_cipher), int(rec_expo))
             avg = self.paillier_privk.decrypt(enc_num)
             print(f"Average: {avg}")
             
