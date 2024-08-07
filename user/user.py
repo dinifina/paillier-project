@@ -109,7 +109,6 @@ class user:
                     rsaSign, encryptedSal = serverResponse_user(data)
                     if (rsaSign != None and encryptedSal != None):
                         send_sigMsg(rsaSign, encryptedSal)
-                        s.sendall(encryptedSal)
                         data = s.recv(2048).decode('utf-8')
                         if data:
                             match data:
