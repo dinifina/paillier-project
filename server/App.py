@@ -37,8 +37,11 @@ class Server:
             num_values = data['num']
             for x in values:
                 encrypted_sum = encrypted_sum._add_encrypted(x)
-            encrypted_avg = encrypted_sum.__truediv__(num_values)    
-            return encrypted_avg
+            if(num_values != 0):
+                encrypted_avg = encrypted_sum.__truediv__(num_values)    
+                return encrypted_avg
+            else:
+                return encrypted_sum
 
         def case_User():
             #Get public RSA_key
