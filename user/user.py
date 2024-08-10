@@ -64,8 +64,8 @@ class user:
             ans = upper_dec-lower_dec
             ans_enc = str(self.paillier_pubk.encrypt(ans, r_value=rval).ciphertext(be_secure=False)).encode('utf-8')
             s.sendall(ans_enc)
-            rec_cipher = s.recv(2024).decode("utf-8")
-            rec_expo = s.recv(2024).decode("utf-8")
+            rec_cipher = s.recv(2024).decode('utf-8')
+            rec_expo = s.recv(2024).decode('utf-8')
             #decode response
             enc_num = paillier.EncryptedNumber(self.paillier_pubk, int(rec_cipher), int(rec_expo))
             avg = self.paillier_privk.decrypt(enc_num)
